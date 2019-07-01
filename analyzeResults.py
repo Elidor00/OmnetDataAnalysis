@@ -102,18 +102,18 @@ def deleteNvalues(array,value):
 		del array[0]
 
 def meanColumn(matrix, i):
-	sum=0
-	numrows=len(matrix)
+	sum = 0
+	numrows = len(matrix)
 	for row in matrix:
-		sum=sum + row[i]
-	return sum/ float(numrows)
+		sum = sum + row[i][0]
+	return sum / float(numrows)
 
 def minRow(matrix): #rows has different lenght
 	numrows = len(matrix)
-	min=len(matrix[0])
+	min = len(matrix[0])
 	for i in range(1, numrows):
 		if len(matrix[i]) < min:
-			min= len(matrix[i])
+			min = len(matrix[i])
 	return min
 
 def rowToStr(row):
@@ -125,10 +125,10 @@ def checkArgs():
 		print("Insert name of project to analyze")
 		exit(0)
 
-def deletePrevResults(risultatiPuliti, risultatiSporchi): 
+def deletePrevResults(risultatiSporchi, risultatiPuliti): 
 	try:
-		os.remove(risultatiPuliti)
 		os.remove(risultatiSporchi)
+		os.remove(risultatiPuliti)
 	except OSError:
 		pass
 
@@ -147,8 +147,8 @@ def assembleDictionary(total):
 	files = os.listdir(path)
 	for file in files:
 		if file.endswith('.csv'):
-			nameFile=file.split("#")[0]
-			print("namefile=",nameFile)
+			nameFile = file.split("#")[0]
+			print("namefile = ",nameFile)
 			run = file.split("#")[1].split(".")[0]
 			csv = pd.read_csv(path+file)
 			modules = csv.module.unique() #all modules
@@ -157,35 +157,36 @@ def assembleDictionary(total):
 			params = nameFile[7:].replace('-','').split('-')[0].split(',')
 			actual = total
 			for p in params:
-				p0=p.split("=")[0].strip()
-				p1=p.split("=")[1].strip()
+				p0 = p.split("=")[0].strip()
+				p1 = p.split("=")[1].strip()
 				index = paramsDict[p0].index(p1)
 				actual = actual[index]
 			for module in modules:
 				if str(module)!="nan":
 					moduleName = str(module).split(".")[1]
-					if(len(actual[moduleName]))==0:
-						actual[moduleName]=defaultdict(list)
+					if(len(actual[moduleName])) == 0:
+						actual[moduleName] = defaultdict(list)
 					if  moduleName in moduleList:  #interesting modules
 						print("MODULE:",str(moduleName))
 						for attribute in attributes:
 							if (str(attribute)!= "nan") :
 								attributeName=str(attribute).split(":")[0]
 								if (attributeName in attrDict[moduleName]):
-									row= csv[(csv.type=='vector') & (csv.module==module) & (csv.name==attribute)].vecvalue.describe()
+									row = csv[(csv.type == 'vector') & (csv.module == module) & (csv.name == attribute)].vecvalue.describe()
+									rowtime = csv[(csv.type == 'vector') & (csv.module == module) & (csv.name == attribute)].vectime.describe()
 									if len(row.values) > 2:
-										print("attr=",attribute)
-										actual[moduleName][attributeName].append([])
-										for item in row[2].split():
-											actual[moduleName][attributeName][-1].append(float(item)) #ci aggiungo tutti i nuovi valori
+										print("attr = ",attribute)
+										rt = [(float(a),float(b)) for a,b in zip(row[2].split(), rowtime[2].split())]
+										actual[moduleName][attributeName].append(rt)
 										with open(risultatiSporchi,"a") as f:
-											r=rowToStr(row)
-											f.write("Configuration, "+nameFile +", Module," +module + ", Attribute," +attribute +  ", Run, "+run+", Values, " + r + "\n")
+											r = rowToStr(row)
+											t = rowToStr(rowtime)
+											f.write("Configuration, "+nameFile +", Module," +module + ", Attribute," +attribute +  ", Run, "+run+", Values, " + r + ", Time, " + t + "\n")
 										
 def createMeanArray(matrix):
-	arrayMean=[]
+	arrayMean = []
 	for i in range(0 , minRow(matrix)):
-		mean=meanColumn(matrix,i)
+		mean = meanColumn(matrix,i)
 		arrayMean.append(mean)
 	return arrayMean
 
@@ -201,7 +202,7 @@ def createPrefixArray(arrayMean):
 def calculateMeanRow(matrix):
 	meanRows=[]
 	for i,row in enumerate(matrix):
-		mean = np.mean(row)
+		mean = np.mean([x for x,_ in row])
 		meanRows.append(mean)
 	return(meanRows)
 
@@ -217,10 +218,10 @@ def calculateConfidenceInterval(meanRows):
 
 def calculateExtimatedValue(configuration,moduleName,attributeName):
 	print("<--- BEGINNING configuration for attribute %s of module %s --->"%(attributeName,moduleName))
-	arrayMean= []
+	arrayMean = []
 	prefixMean = []
 	arrayMean = createMeanArray(configuration[moduleName][attributeName])
-	prefixMean=createPrefixArray(arrayMean)
+	prefixMean = createPrefixArray(arrayMean)
 	trans=calculateTransient(prefixMean)
 	if trans >= len(prefixMean):
 		count = count + 1
@@ -233,11 +234,10 @@ def calculateExtimatedValue(configuration,moduleName,attributeName):
 	prefixMean=createPrefixArray(arrayMean)
 	meanRows = calculateMeanRow(configuration[moduleName][attributeName])
 	print(f'MEAN FOR RUN = {meanRows}')
-	return (meanRows, trans)
+	return (meanRows, trans) 
 
 def analyzeList(data): 
 	print(f'------------------------------------{[]}-------------------------------------------')
-	print('trans?',data["trans"])
 	data["MEAN"], data["confLower"], data["confUpper"] = calculateConfidenceInterval(data["list"])
 	print(f'ESTIMATED MEAN = {data["MEAN"]}')
 	print(f'CONFIDENCE INTERVALS lower: {data["confLower"]}, upper: {data["confUpper"]}')
@@ -279,7 +279,7 @@ def main():
 							total[y][z][x][k][s].append([])
 							total[y][z][x][k][s][q]=defaultdict(list)
 	
-	deletePrevResults(risultatiPuliti,risultatiSporchi)
+	deletePrevResults(risultatiSporchi, risultatiPuliti)
 	assembleDictionary(total)
 	#LTontime= defaultdict(list)
 	#LTontime["list"]=[]
@@ -309,7 +309,7 @@ def main():
 		configuration["CustomerQL"]["onTime"] = createMeanArray(configuration["customerQueueQ1"]["queueLength"])
 
 		configuration["EnergyQL"] = defaultdict(list) 
-		configuration["EnergyQL"]["list"], configuration["EnergyQL"]["trans"]= calculateExtimatedValue(configuration,"energyQueueQ2","queueLength")
+		configuration["EnergyQL"]["list"], configuration["EnergyQL"]["trans"] = calculateExtimatedValue(configuration,"energyQueueQ2","queueLength")
 		analyzeList(configuration["EnergyQL"])
 
 		#LTontime["list"].append(createMeanArray(configuration["sinkC"]["lifeTime"]))
@@ -321,21 +321,25 @@ def main():
 	#print("finarr",finarr)
 	#print("len",len(finarr))
 
+	print("----------- Error? --------------------")
+
 	print('count failed transient', count)
 	print('count negative transient', countneg)
 
+	
 	banana = []
 	for inl,inw,inn,ink,inp,inz in iterateOnParams(["lambda","w","N","K","p","z"]):
 		configuration = total[inl][inw][inn][ink][inp][inz]
-		#print('len', len(configuration["CustomerQL"]["onTime"]))
-		#print('LOL', configuration["CustomerQL"]["onTime"])
+		print('len', len(configuration["CustomerQL"]["onTime"]))
+		print('LOL', configuration["CustomerQL"]["onTime"])
 		banana.append(np.mean(configuration["CustomerQL"]["onTime"]))
 	banana = createPrefixArray(banana)
 	banana = sorted(banana)
 	printGraph(range(0, len(banana)), banana, f"banana", "X", 'Y', 'CustomerQ1 QL')
+	
 
 	#deletePrevGraph()
-	print("----------- Time To GRAFICI --------------------")
+	print("----------- Graph --------------------")
 
 	#printGraph(range(0, len(finarrLTontime)), finarrLTontime, f"Tempo di permanenza medio nel sistema", "SinkC LifeTime", 'Tempo', 'Lifetime della SinkC')
 	#printGraph(range(0, len(finarrLTonmax)), finarrLTonmax, f"Tempo di permanenza max nel sistema", "SinkC LifeTime", 'Tempo', 'Lifetime della SinkC')
