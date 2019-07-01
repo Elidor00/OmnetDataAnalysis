@@ -15,7 +15,6 @@ risultatiPuliti= "../risultatiPuliti.csv"
 risultatiSporchi= "../risultatiSporchi.csv"
 graph= "../graph/"
 
-moduleList = ["customerQueueQ1","energyQueueQ2","sinkC"]
 
 attrDict = {
 "customerQueueQ1":["queueLength"],
@@ -125,7 +124,7 @@ def checkArgs():
 		print("Insert name of project to analyze")
 		exit(0)
 
-def deletePrevResults(risultatiSporchi, risultatiPuliti): 
+def deletePrevResults(risultatiSporchi, risultatiPuliti):
 	try:
 		os.remove(risultatiSporchi)
 		os.remove(risultatiPuliti)
@@ -182,13 +181,31 @@ def assembleDictionary(total):
 											r = rowToStr(row)
 											t = rowToStr(rowtime)
 											f.write("Configuration, "+nameFile +", Module," +module + ", Attribute," +attribute +  ", Run, "+run+", Values, " + r + ", Time, " + t + "\n")
-										
+
 def createMeanArray(matrix):
 	arrayMean = []
 	for i in range(0 , minRow(matrix)):
 		mean = meanColumn(matrix,i)
 		arrayMean.append(mean)
 	return arrayMean
+
+def createMeanArrayTime(matrix):
+	arrayMean = []
+	index=[]
+	for i in len(matrix):
+		index.append(0)
+
+
+	flag=True
+	#for tindex, tvalue in enumerate(index): tvalue<len(matrix[tindex])
+	while Flag:
+		i=np.argmin(time for iy, ix in enumerate(index): time=matrix[iy][ix][1] )
+		arrayMean.append( np.mean( [state for iy, ix in enumerate(index): state=matrix[iy][ix][0] )) # , matrix[i][index[i]][1]) )
+		index[i]=index[i]+1
+		#aggiungo un nuovo valore ad arrayMean
+		Flag= False
+		for tindex, tvalue in enumerate(index):
+			Flag= Flag or tvalue<len(matrix[tindex]):
 
 def createPrefixArray(arrayMean):
 	prefixMean = []
@@ -234,9 +251,9 @@ def calculateExtimatedValue(configuration,moduleName,attributeName):
 	prefixMean=createPrefixArray(arrayMean)
 	meanRows = calculateMeanRow(configuration[moduleName][attributeName])
 	print(f'MEAN FOR RUN = {meanRows}')
-	return (meanRows, trans) 
+	return (meanRows, trans)
 
-def analyzeList(data): 
+def analyzeList(data):
 	print(f'------------------------------------{[]}-------------------------------------------')
 	data["MEAN"], data["confLower"], data["confUpper"] = calculateConfidenceInterval(data["list"])
 	print(f'ESTIMATED MEAN = {data["MEAN"]}')
@@ -261,7 +278,7 @@ def creaRisultatiPuliti(total):
 			f.write(str(paramsDict["lambda"][a])+", " + str(paramsDict["w"][b])+", " + str(paramsDict["N"][c])+", " +str(paramsDict["K"][d])+", " + str(paramsDict["p"][e])+", " +str(paramsDict["z"][g]+","))
 			printone(f,total[a][b][c][d][e][g]["CustomerQL"], "Customer QL")
 		print("Results saved on file")
-	
+
 def main():
 	checkArgs()
 	total=[]
@@ -278,7 +295,7 @@ def main():
 						for q in range(	len(paramsDict["z"])):
 							total[y][z][x][k][s].append([])
 							total[y][z][x][k][s][q]=defaultdict(list)
-	
+
 	deletePrevResults(risultatiSporchi, risultatiPuliti)
 	assembleDictionary(total)
 	#LTontime= defaultdict(list)
@@ -291,24 +308,26 @@ def main():
 	for inl,inw,inn,ink,inp,inz in iterateOnParams(["lambda","w","N","K","p","z"]):
 		configuration = total[inl][inw][inn][ink][inp][inz]
 
-		configuration["LT"] = defaultdict(list) 
+		configuration["LT"] = defaultdict(list)
 		configuration["LT"]["list"], configuration["LT"]["trans"] = calculateExtimatedValue(configuration,"sinkC","lifeTime")
 		analyzeList(configuration["LT"])
 
-		configuration["MaxLT"] = defaultdict(list)  
+		configuration["MaxLT"] = defaultdict(list)
 		configuration["MaxLT"]["list"] = [max(arr) for arr in configuration["sinkC"]["lifeTime"]]
 		analyzeList(configuration["MaxLT"])
 
-		configuration["MinLT"] = defaultdict(list)  
+		configuration["MinLT"] = defaultdict(list)
 		configuration["MinLT"]["list"] = [min(arr) for arr in configuration["sinkC"]["lifeTime"]]
 		analyzeList(configuration["MinLT"])
-	
-		configuration["CustomerQL"] = defaultdict(list)  
+
+		configuration["CustomerQL"] = defaultdict(list)
 		configuration["CustomerQL"]["list"], configuration["CustomerQL"]["trans"] = calculateExtimatedValue(configuration,"customerQueueQ1","queueLength")
 		analyzeList(configuration["CustomerQL"])
+
+
 		configuration["CustomerQL"]["onTime"] = createMeanArray(configuration["customerQueueQ1"]["queueLength"])
 
-		configuration["EnergyQL"] = defaultdict(list) 
+		configuration["EnergyQL"] = defaultdict(list)
 		configuration["EnergyQL"]["list"], configuration["EnergyQL"]["trans"] = calculateExtimatedValue(configuration,"energyQueueQ2","queueLength")
 		analyzeList(configuration["EnergyQL"])
 
@@ -326,7 +345,7 @@ def main():
 	print('count failed transient', count)
 	print('count negative transient', countneg)
 
-	
+
 	banana = []
 	for inl,inw,inn,ink,inp,inz in iterateOnParams(["lambda","w","N","K","p","z"]):
 		configuration = total[inl][inw][inn][ink][inp][inz]
@@ -336,7 +355,7 @@ def main():
 	banana = createPrefixArray(banana)
 	banana = sorted(banana)
 	printGraph(range(0, len(banana)), banana, f"banana", "X", 'Y', 'CustomerQ1 QL')
-	
+
 
 	#deletePrevGraph()
 	print("----------- Graph --------------------")
@@ -350,7 +369,7 @@ def main():
 	energy = []
 	confL = []
 	confU = []
-	for in1, n1 in enumerate(paramsDict["N"]): 
+	for in1, n1 in enumerate(paramsDict["N"]):
 		capacity.append(int(n1))
 		energyforconf = []
 		conflowerforconf = []
@@ -384,7 +403,7 @@ def main():
 			for inw, inz in iterateOnParams(["w", "z"]):
 				jobforconf.append(total[inl][inw][inn][ink][inp][inz]["CustomerQL"]["MEAN"])
 				energyforconf.append(total[inl][inw][inn][ink][inp][inz]["EnergyQL"]["MEAN"])
-			job.append(np.mean(jobforconf))	
+			job.append(np.mean(jobforconf))
 			energy.append(np.mean(energyforconf))
 		job = [x for _,x in sorted(zip(energy, job))]
 		energy = [x for x,_ in sorted(zip(energy, job))]
@@ -463,7 +482,7 @@ def main():
 			job = [x for _,x in sorted(zip(st, job))]
 			st = [x for x,_ in sorted(zip(st ,job))]
 		printGraph(st, job,f"QueueLenght based on w={w}", "Tempo di servizio e di interarrivo", 'Tempo di servizio z', 'Lunghezza della coda Q2 di energia')
-	
+
 
 	creaRisultatiPuliti(total)
 
