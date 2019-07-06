@@ -7,16 +7,13 @@ from scipy.stats import t
 import sys
 import math
 
-stepforqueues=10
-
-
+stepforqueues = 10
 count = 0
 countneg = 0
 
-risultatiPuliti= "../risultatiPuliti.csv"
-risultatiSporchi= "../risultatiSporchi.csv"
-graph= "../graph/"
-
+risultatiPuliti = "../risultatiPuliti.csv"
+risultatiSporchi = "../risultatiSporchi.csv"
+graph = "../graph/"
 
 attrDict = {
 "customerQueueQ1":["queueLength"],
@@ -27,8 +24,8 @@ attrDict = {
 paramsDict={
   "lambda":["2s", "4s"],
   "w":["1s", "2s", "4s"],
-  "N":["40", "60", "100"],  #energia
-  "K":["2","4","8","1"],   #customer -1 = infinita capacità della coda
+  "N":["40", "60", "100"], 
+  "K":["2","4","8","1"],   
   "p":["1","2","3"],
   "z":["0.04s", "0.058s", "0.07s"]
 }
@@ -44,53 +41,27 @@ def iterateOnParams(list):
 	else:
 		return ([])
 
-def printGraph(x, y, title, label="graph", descrX="x", descrY="y"):
-	plt.plot(x,y, label=label)
-	plt.plot(x,y, 'ro')
+def printGraphOnTime(y, title, descrX="x", descrY="y"):
+	plt.plot(y)
 	plt.xlabel(descrX)
 	plt.ylabel(descrY)
 	plt.title(title)
-	plt.savefig(graph+title.replace(" ", "_") + ".png")
-	plt.show()
-
-def printGraphOnTime(y, title, label="graph", descrX="x", descrY="y"):
-	plt.plot(y, label=label)
-	plt.plot(y, 'ro')
-	plt.xlabel(descrX)
-	plt.ylabel(descrY)
-	plt.title(title)
-	plt.savefig(graph+title.replace(" ", "_") + ".png")
-	plt.show()
-
-
-def printGraphP(x, title, label="graph", descrX="x", descrY="y"):
-	plt.plot(x, label=label)
-	plt.xlabel(descrX)
-	plt.ylabel(descrY)
-	plt.title(title)
-	plt.show()
-
-def printGraphWConf(x, y, confL, confU, title, label="graph", descrX="x", descrY="y"):
-	fig ,ax = plt.subplots()
-	ax.plot(x, y, label=label)
-	ax.fill_between(x, confL, confU, facecolor='yellow')
-	ax.set_xlabel(descrX)
-	ax.set_ylabel(descrY)
-	ax.set_title(title)
-	plt.show()
+	plt.savefig(graph + title.replace(" ", "_") + ".png")
+	plt.close()
 
 def printMultiGraph(multi, title, descrX="x", descrY="y"):
 	labels=[]
 	ss=[]
-	for x,y,s in multi:
-		tmp,=plt.plot(x,y, label=s)
+	for y,s in multi:
+		tmp, = plt.plot(y, label=s)
 		labels.append(tmp)
 		ss.append(s)
 	plt.xlabel(descrX)
 	plt.ylabel(descrY)
 	plt.title(title)
-	plt.legend(labels,ss)
-	plt.show()
+	plt.legend(labels, ss)
+	plt.savefig(graph + title.replace(" ", "_") + ".png")
+	plt.close()
 
 def calculateTransient(array):
 	step = math.ceil(np.multiply(np.true_divide(len(array), 100), 2))
@@ -103,9 +74,8 @@ def calculateTransient(array):
 			max_index = i
 	return max(max_index, 0)
 
-
-def deleteNvalues(array,value):
-	array=array[value:]
+def deleteNvalues(array, value):
+	array = array[value:]
 
 def rowToStr(row):
 	str1 = ''.join(str(e) for e in row)
@@ -123,14 +93,12 @@ def deletePrevResults(risultatiSporchi, risultatiPuliti):
 	except OSError:
 		pass
 
-'''
 def deletePrevGraph():
 	try:
 		for file in os.listdir(graph):
-			os.remove(file)
+			os.remove(os.path.join(graph, file))
 	except Exception as e:
 		print(e)
-'''
 
 #Create single dict for each configuration
 def assembleDictionary(total):
@@ -145,7 +113,7 @@ def assembleDictionary(total):
 			modules = csv.module.unique() #all modules
 			attributes = csv.name.unique()
 			type = csv.type.unique()
-			params = nameFile[7:].replace('-','').split('-')[0].split(',')
+			params = nameFile[7:].replace('-', '').split('-')[0].split(',')
 			actual = total
 			for p in params:
 				p0 = p.split("=")[0].strip()
@@ -153,74 +121,74 @@ def assembleDictionary(total):
 				index = paramsDict[p0].index(p1)
 				actual = actual[index]
 			for module in modules:
-				if str(module)!="nan":
+				if str(module) != "nan":
 					moduleName = str(module).split(".")[1]
 					if(len(actual[moduleName])) == 0:
 						actual[moduleName] = defaultdict(list)
 					if  moduleName in attrDict.keys():  #interesting modules
-						print("MODULE:",str(moduleName))
+						print("MODULE:", str(moduleName))
 						for attribute in attributes:
 							if (str(attribute)!= "nan") :
 								attributeName=str(attribute).split(":")[0]
 								if (attributeName in attrDict[moduleName]):
-									row = csv[(csv.type == 'vector') & (csv.module == module) & (csv.name == attribute)].vecvalue.describe()
-									rowtime = csv[(csv.type == 'vector') & (csv.module == module) & (csv.name == attribute)].vectime.describe()
+									row = csv[(csv.type == 'vector') & (csv.module == module) & (csv.name == attribute)].vecvalue.describe()  #value
+									rowtime = csv[(csv.type == 'vector') & (csv.module == module) & (csv.name == attribute)].vectime.describe()  #time
 									if len(row.values) > 2:
 										print("attr = ",attribute)
 										rt = [(float(a),float(b)) for a,b in zip(row[2].split(), rowtime[2].split())]
 										actual[moduleName][attributeName].append(rt)
-										with open(risultatiSporchi,"a") as f:
+										with open(risultatiSporchi,"a") as f:   #risultatiSporchi
 											r = rowToStr(row[2])
 											t = rowToStr(rowtime[2])
 											f.write("Configuration, "+nameFile +", Module," +module + ", Attribute," +attribute +  ", Run, "+run+", Values, " + r + ", Time, " + t + "\n")
 
 def createMeanArray(matrix,start=0,step=1):
 	def calcMeanloc(row,start,end):
-		acc=0
-		counter=0
+		acc = 0
+		counter = 0
 		for value, time in row:
-			if start < time < end:
+			if start < time <= end: 
 				acc=acc+value
-				counter=counter+1
-		if counter>0:
+				counter = counter+1
+		if counter > 0:
 			return [acc/counter]
 		else:
 			return []
 
 	arrayMean = []
 	for interval in range(start,299,step):
-		mean=[]
+		mean = []
 		for row in matrix:
-			val=calcMeanloc(row,interval,interval+step) 
-			if len(val)>0:
-				mean.append(val )
-		if len(mean)>0:
-			arrayMean.append( np.mean(mean))
+			val = calcMeanloc(row, interval, interval+step) 
+			if len(val) > 0:
+				mean.append(val)
+		if len(mean) > 0:
+			arrayMean.append(np.mean(mean))
 	return arrayMean
 
 def createMeanArrayTime(matrix,start=0,step=10):
 	def calcWMean(row,start,end):
-		lastvalue=0
-		lasttime=start
-		acc=0
+		lastvalue = 0
+		lasttime = start
+		acc = 0
 		for value, time in row:
 			if time < start:
-				lastvalue=value
+				lastvalue = value
 			else:
 				if time < end:
-					acc=acc+(time-lasttime)*lastvalue
-					lasttime=time
-					lastvalue=value
+					acc = acc+(time-lasttime)*lastvalue
+					lasttime = time
+					lastvalue = value
 				else:
-					acc=acc+(end-lasttime)*lastvalue
+					acc = acc+(end-lasttime)*lastvalue
 					break
 		return acc/(end-start)
 	arrayMean = []
 	for interval in range(start,299,step):
-		meanW=[]
+		meanW = []
 		for row in matrix:
-			meanW.append(calcWMean(row,interval,interval+step) )
-		arrayMean.append( np.mean(meanW))
+			meanW.append(calcWMean(row, interval, interval+step))
+		arrayMean.append(np.mean(meanW))
 	return arrayMean
 
 def createPrefixArray(arrayMean):
@@ -237,7 +205,7 @@ def calculateConfidenceInterval(meanRows):
 	mSquared = np.sqrt(m)
 	meanEstimate = np.mean(meanRows)
 	stdDev = np.std(meanRows)
-	tValue = t.pdf(0.1, df=m-1)
+	tValue = t.pdf(0.1, df = m-1)
 	confLower = meanEstimate - tValue*(stdDev/mSquared)
 	confUpper = meanEstimate + tValue*(stdDev/mSquared)
 	return meanEstimate, confLower, confUpper
@@ -245,7 +213,6 @@ def calculateConfidenceInterval(meanRows):
 def calculateExtimatedValue(configuration,moduleName,attributeName,ontime=False):
 	print("<--- BEGINNING configuration for attribute %s of module %s --->"%(attributeName,moduleName))
 	prefixMean = []
-
 	if ontime:
 		configuration[moduleName]["ONTIME"] = createMeanArrayTime(configuration[moduleName][attributeName],step=stepforqueues)
 	else:
@@ -280,7 +247,7 @@ def printone(f,data,name):
 	f.write(str(data["MEAN"]))
 	f.write("\n")
 
-def creaRisultatiPuliti(total):
+def creaRisultatiPuliti(total):  #risultatiPuliti
 	with open(risultatiPuliti,"a") as f:
 		f.write("lambda, w, N, K, p, z, name, startTransient, confLower, confUpper, meanValues \n") # titolo
 	for a,b,c,d,e,g in iterateOnParams(["lambda", "w", "N", "K", "p", "z"]):
@@ -294,17 +261,17 @@ def creaRisultatiPuliti(total):
 		print("Results saved on file")
 
 def maxinrun(run):
-	max=run[0][0]
+	max = run[0][0]
 	for value,time in run:
-		if value>max:
-			max=value
+		if value > max:
+			max = value
 	return max
 
 def mininrun(run):
-	min=run[0][0]
+	min = run[0][0]
 	for value,time in run:
-		if value<min:
-			min=value
+		if value < min and value > 0:
+			min = value
 	return min
 
 def main():
@@ -325,6 +292,7 @@ def main():
 							total[y][z][x][k][s][q]=defaultdict(list)
 
 	deletePrevResults(risultatiSporchi, risultatiPuliti)
+	deletePrevGraph()
 	assembleDictionary(total)
 
 	print("-----------Done---------------")
@@ -352,101 +320,61 @@ def main():
 		configuration["EnergyQL"]["list"], configuration["EnergyQL"]["trans"] = calculateExtimatedValue(configuration,"energyQueueQ2","queueLength",ontime=True)
 		analyzeList(configuration["EnergyQL"])
 
-	print("----------- Error? --------------------")
-
-	print('count failed transient', count)
-	print('count negative transient', countneg)
-
-
-
-
-
-	creaRisultatiPuliti(total)
-	#deletePrevGraph()
-
-
 	print("----------- Graph --------------------")
 
 	for inn, ink in iterateOnParams(["N","K"]): #capacità
-		array=[]
+		array = []
 		for i in range(int(300/stepforqueues)):
 			array.append([])
-		for inp, inl, inw, inz in iterateOnParams(["p","lambda","w", "z"]): #service time
-			for time, value in enumerate(total[inl][inw][inn][ink][inp][inz]["customerQueueQ1"]["ONTIME"]):
-				array[time].append(value)
-		printarray=[]
-		for elem in array:
-			printarray.append(np.mean(elem))
-		printGraphOnTime(printarray, f"CQL ontime for N={paramsDict['N'][inn]} K={paramsDict['K'][ink]}" )
-	
-	for inn, ink in iterateOnParams(["N","K"]): #capacità
-		array=[]
-		for i in range(int(300/stepforqueues)):
-			array.append([])
-		for inp, inl, inw, inz in iterateOnParams(["p","lambda","w", "z"]): #service time
+		for inp, inl, inw, inz in iterateOnParams(["p","lambda","w", "z"]):
 			for time, value in enumerate(total[inl][inw][inn][ink][inp][inz]["customerQueueQ1"]["PREFIXMEAN"]):
 				array[time].append(value)
-		printarray=[]
+		printarray = []
 		for elem in array:
 			printarray.append(np.mean(elem))
-		printGraphOnTime(printarray, f"CQL prefixmean for N={paramsDict['N'][inn]} K={paramsDict['K'][ink]}" )
-
-####################################################################################################
-
+		printGraphOnTime(printarray[2:], f"CQL for N={paramsDict['N'][inn]} and K={paramsDict['K'][ink]} queues capacity", "Time", "Customer QueueLength")
 
 	for inn, ink in iterateOnParams(["N","K"]): #capacità
-		array=[]
+		array = []
 		for i in range(int(300/stepforqueues)):
 			array.append([])
-		for inp, inl, inw, inz in iterateOnParams(["p","lambda","w", "z"]): #service time
-			for time, value in enumerate(total[inl][inw][inn][ink][inp][inz]["energyQueueQ2"]["ONTIME"]):
-				array[time].append(value)
-		printarray=[]
-		for elem in array:
-			printarray.append(np.mean(elem))
-		printGraphOnTime(printarray, f"EQL ontime for N={paramsDict['N'][inn]} K={paramsDict['K'][ink]}" )
-	
-	for inn, ink in iterateOnParams(["N","K"]): #capacità
-		array=[]
-		for i in range(int(300/stepforqueues)):
-			array.append([])
-		for inp, inl, inw, inz in iterateOnParams(["p","lambda","w", "z"]): #service time
+		for inp, inl, inw, inz in iterateOnParams(["p","lambda","w", "z"]):
 			for time, value in enumerate(total[inl][inw][inn][ink][inp][inz]["energyQueueQ2"]["PREFIXMEAN"]):
 				array[time].append(value)
-		printarray=[]
+		printarray = []
 		for elem in array:
 			printarray.append(np.mean(elem))
-		printGraphOnTime(printarray, f"EQL prefixmean for N={paramsDict['N'][inn]} K={paramsDict['K'][ink]}" )
+		printGraphOnTime(printarray[2:], f"EQL for N={paramsDict['N'][inn]} and K={paramsDict['K'][ink]} queues capacity","Time", "Energy QueueLength")
 
-#############################################################################################
-
-
-	for inn, ink in iterateOnParams(["N","K"]): #capacità
+	multi = []
+	for inl, in1 in enumerate(paramsDict["lambda"]): #interArrivalTime
 		array=[]
 		for i in range(int(300/1)):
 			array.append([])
-		for inp, inl, inw, inz in iterateOnParams(["p","lambda","w", "z"]): #service time
-			for time, value in enumerate(total[inl][inw][inn][ink][inp][inz]["sinkC"]["ONTIME"]):
-				array[time].append(value)
-		printarray=[]
-		for elem in array:
-			printarray.append(np.mean(elem))
-		printGraphOnTime(printarray, f"LifeTime for N={paramsDict['N'][inn]} K={paramsDict['K'][ink]}" )
-
-
-	for inn, ink in iterateOnParams(["N","K"]): #capacità
-		array=[]
-		for i in range(int(300/1)):
-			array.append([])
-		for inp, inl, inw, inz in iterateOnParams(["p","lambda","w", "z"]): #service time
+		for inp, inn, ink, inz, inw in iterateOnParams(["p","N","K","z","w"]):
 			for time, value in enumerate(total[inl][inw][inn][ink][inp][inz]["sinkC"]["PREFIXMEAN"]):
 				array[time].append(value)
-		printarray=[]
+		printarray = []
 		for elem in array:
 			printarray.append(np.mean(elem))
-		printGraphOnTime(printarray, f"LifeTime prefixmean for N={paramsDict['N'][inn]} K={paramsDict['K'][ink]}" )
+		multi.append([printarray[10:], in1])
+		#printGraphOnTime(printarray[10:], f"LifeTime customerjob prefixmean for lambda={paramsDict['lambda'][inl]}","Time", "Customer LifeTime")
+	printMultiGraph(multi, "LifeTime customer job for time compared on lambda", "Time", "Customer LifeTime")
 
-	print(max( [ total[inl][inw][inn][ink][inp][inz]["MaxLT"]['MEAN'] for inl,inw,inn,ink,inp,inz in iterateOnParams(["lambda","w","N","K","p","z"]) ] ))
-	print(min( [ total[inl][inw][inn][ink][inp][inz]["MinLT"]['MEAN'] for inl,inw,inn,ink,inp,inz in iterateOnParams(["lambda","w","N","K","p","z"]) ] ))
+	creaRisultatiPuliti(total)
+
+	print("----------- Error? --------------------")
+
+	print('Count Failed Transient', count)
+	print('Count Negative Transient', countneg)
+
+	print("Max Life Time Customer Job", max([total[inl][inw][inn][ink][inp][inz]["MaxLT"]['MEAN'] for inl,inw,inn,ink,inp,inz in iterateOnParams(["lambda","w","N","K","p","z"])]))
+	print("Max Life Time Customer Job Lower Confidence Interval", max([total[inl][inw][inn][ink][inp][inz]["MaxLT"]['confLower'] for inl,inw,inn,ink,inp,inz in iterateOnParams(["lambda","w","N","K","p","z"])]))
+	print("Max Life Time Customer Job Upper Confidence Interval", max([total[inl][inw][inn][ink][inp][inz]["MaxLT"]['confUpper'] for inl,inw,inn,ink,inp,inz in iterateOnParams(["lambda","w","N","K","p","z"])]))
+
+	print("Min Life Time Customer Job", min([total[inl][inw][inn][ink][inp][inz]["MinLT"]['MEAN'] for inl,inw,inn,ink,inp,inz in iterateOnParams(["lambda","w","N","K","p","z"])]))
+	print("Min Life Time Customer Job Lower Confidence Interval", min([total[inl][inw][inn][ink][inp][inz]["MinLT"]['confLower'] for inl,inw,inn,ink,inp,inz in iterateOnParams(["lambda","w","N","K","p","z"])]))
+	print("Min Life Time Customer Job Upper Confidence Interval", min([total[inl][inw][inn][ink][inp][inz]["MinLT"]['confUpper'] for inl,inw,inn,ink,inp,inz in iterateOnParams(["lambda","w","N","K","p","z"])]))
+
 if __name__== "__main__":
 	main()
