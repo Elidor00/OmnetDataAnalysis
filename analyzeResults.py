@@ -8,8 +8,6 @@ import sys
 import math
 
 stepforqueues = 10
-count = 0
-countneg = 0
 
 risultatiPuliti = "../risultatiPuliti.csv"
 risultatiSporchi = "../risultatiSporchi.csv"
@@ -25,7 +23,7 @@ paramsDict={
   "lambda":["2s", "4s"],
   "w":["1s", "2s", "4s"],
   "N":["40", "60", "100"], 
-  "K":["2","4","8","1"],   
+  "K":["2","4","8","1"],   #-1 = inf
   "p":["1","2","3"],
   "z":["0.04s", "0.058s", "0.07s"]
 }
@@ -50,8 +48,8 @@ def printGraphOnTime(y, title, descrX="x", descrY="y"):
 	plt.close()
 
 def printMultiGraph(multi, title, descrX="x", descrY="y"):
-	labels=[]
-	ss=[]
+	labels = []
+	ss = []
 	for y,s in multi:
 		tmp, = plt.plot(y, label=s)
 		labels.append(tmp)
@@ -210,7 +208,7 @@ def calculateConfidenceInterval(meanRows):
 	confUpper = meanEstimate + tValue*(stdDev/mSquared)
 	return meanEstimate, confLower, confUpper
 
-def calculateExtimatedValue(configuration,moduleName,attributeName,ontime=False):
+def calculateExtimatedValue(configuration, moduleName, attributeName, ontime=False):
 	print("<--- BEGINNING configuration for attribute %s of module %s --->"%(attributeName,moduleName))
 	prefixMean = []
 	if ontime:
@@ -218,11 +216,7 @@ def calculateExtimatedValue(configuration,moduleName,attributeName,ontime=False)
 	else:
 		configuration[moduleName]["ONTIME"] = createMeanArray(configuration[moduleName][attributeName],step=1)
 	prefixMean = createPrefixArray(configuration[moduleName]["ONTIME"])
-	trans=calculateTransient(prefixMean)
-	if trans >= len(prefixMean):
-		count = count + 1
-	if trans < 0:
-		countneg = countneg + 1
+	trans = calculateTransient(prefixMean)
 	print("TRANSIENT =",trans)
 	if not trans is None:
 		deleteNvalues(configuration[moduleName]["ONTIME"],trans)
@@ -235,7 +229,7 @@ def calculateExtimatedValue(configuration,moduleName,attributeName,ontime=False)
 	return (meanRows, trans)
 
 def analyzeList(data):
-	print(f'------------------------------------{[]}-------------------------------------------')
+	print('-------------------------------------------------------------------------------')
 	data["MEAN"], data["confLower"], data["confUpper"] = calculateConfidenceInterval(data["list"])
 	print(f'ESTIMATED MEAN = {data["MEAN"]}')
 	print(f'CONFIDENCE INTERVALS lower: {data["confLower"]}, upper: {data["confUpper"]}')
@@ -249,11 +243,15 @@ def printone(f,data,name):
 
 def creaRisultatiPuliti(total):  #risultatiPuliti
 	with open(risultatiPuliti,"a") as f:
-		f.write("lambda, w, N, K, p, z, name, startTransient, confLower, confUpper, meanValues \n") # titolo
+		f.write("lambda, w, N, K, p, z, name, startTransient, confLower, confUpper, meanValues \n") #titolo
 	for a,b,c,d,e,g in iterateOnParams(["lambda", "w", "N", "K", "p", "z"]):
 		with open(risultatiPuliti,"a") as f:
 			f.write(str(paramsDict["lambda"][a])+", " + str(paramsDict["w"][b])+", " + str(paramsDict["N"][c])+", " +str(paramsDict["K"][d])+", " + str(paramsDict["p"][e])+", " +str(paramsDict["z"][g]+","))
 			printone(f,total[a][b][c][d][e][g]["LT"], "lifetime")
+			f.write(str(paramsDict["lambda"][a])+", " + str(paramsDict["w"][b])+", " + str(paramsDict["N"][c])+", " +str(paramsDict["K"][d])+", " + str(paramsDict["p"][e])+", " +str(paramsDict["z"][g]+","))
+			printone(f,total[a][b][c][d][e][g]["MaxLT"], "max lifetime")
+			f.write(str(paramsDict["lambda"][a])+", " + str(paramsDict["w"][b])+", " + str(paramsDict["N"][c])+", " +str(paramsDict["K"][d])+", " + str(paramsDict["p"][e])+", " +str(paramsDict["z"][g]+","))
+			printone(f,total[a][b][c][d][e][g]["MinLT"], "min lifetime")
 			f.write(str(paramsDict["lambda"][a])+", " + str(paramsDict["w"][b])+", " + str(paramsDict["N"][c])+", " +str(paramsDict["K"][d])+", " + str(paramsDict["p"][e])+", " +str(paramsDict["z"][g]+","))
 			printone(f,total[a][b][c][d][e][g]["EnergyQL"], "Energy QL")
 			f.write(str(paramsDict["lambda"][a])+", " + str(paramsDict["w"][b])+", " + str(paramsDict["N"][c])+", " +str(paramsDict["K"][d])+", " + str(paramsDict["p"][e])+", " +str(paramsDict["z"][g]+","))
@@ -293,6 +291,7 @@ def main():
 
 	deletePrevResults(risultatiSporchi, risultatiPuliti)
 	deletePrevGraph()
+	
 	assembleDictionary(total)
 
 	print("-----------Done---------------")
@@ -303,18 +302,21 @@ def main():
 		configuration["LT"]["list"], configuration["LT"]["trans"] = calculateExtimatedValue(configuration,"sinkC","lifeTime")
 		analyzeList(configuration["LT"])
 
+		# la media dei massimi (max per ogni run della configurazione e poi la media)
 		configuration["MaxLT"] = defaultdict(list)
 		configuration["MaxLT"]["list"] = [maxinrun(arr) for arr in configuration["sinkC"]["lifeTime"]]
-		analyzeList(configuration["MaxLT"])
+		configuration["MaxLT"]["trans"] = configuration["LT"]["trans"]
+		analyzeList(configuration["MaxLT"])	
 
+		# la media dei minimo (min per ogni run della configurazione e poi la media)
 		configuration["MinLT"] = defaultdict(list)
 		configuration["MinLT"]["list"] = [mininrun(arr) for arr in configuration["sinkC"]["lifeTime"]]
+		configuration["MinLT"]["trans"] = configuration["LT"]["trans"]
 		analyzeList(configuration["MinLT"])
 
 		configuration["CustomerQL"] = defaultdict(list)
 		configuration["CustomerQL"]["list"], configuration["CustomerQL"]["trans"] = calculateExtimatedValue(configuration,"customerQueueQ1","queueLength",ontime=True)
 		analyzeList(configuration["CustomerQL"])
-
 
 		configuration["EnergyQL"] = defaultdict(list)
 		configuration["EnergyQL"]["list"], configuration["EnergyQL"]["trans"] = calculateExtimatedValue(configuration,"energyQueueQ2","queueLength",ontime=True)
@@ -358,23 +360,9 @@ def main():
 		for elem in array:
 			printarray.append(np.mean(elem))
 		multi.append([printarray[10:], in1])
-		#printGraphOnTime(printarray[10:], f"LifeTime customerjob prefixmean for lambda={paramsDict['lambda'][inl]}","Time", "Customer LifeTime")
 	printMultiGraph(multi, "LifeTime customer job for time compared on lambda", "Time", "Customer LifeTime")
 
 	creaRisultatiPuliti(total)
-
-	print("----------- Error? --------------------")
-
-	print('Count Failed Transient', count)
-	print('Count Negative Transient', countneg)
-
-	print("Max Life Time Customer Job", max([total[inl][inw][inn][ink][inp][inz]["MaxLT"]['MEAN'] for inl,inw,inn,ink,inp,inz in iterateOnParams(["lambda","w","N","K","p","z"])]))
-	print("Max Life Time Customer Job Lower Confidence Interval", max([total[inl][inw][inn][ink][inp][inz]["MaxLT"]['confLower'] for inl,inw,inn,ink,inp,inz in iterateOnParams(["lambda","w","N","K","p","z"])]))
-	print("Max Life Time Customer Job Upper Confidence Interval", max([total[inl][inw][inn][ink][inp][inz]["MaxLT"]['confUpper'] for inl,inw,inn,ink,inp,inz in iterateOnParams(["lambda","w","N","K","p","z"])]))
-
-	print("Min Life Time Customer Job", min([total[inl][inw][inn][ink][inp][inz]["MinLT"]['MEAN'] for inl,inw,inn,ink,inp,inz in iterateOnParams(["lambda","w","N","K","p","z"])]))
-	print("Min Life Time Customer Job Lower Confidence Interval", min([total[inl][inw][inn][ink][inp][inz]["MinLT"]['confLower'] for inl,inw,inn,ink,inp,inz in iterateOnParams(["lambda","w","N","K","p","z"])]))
-	print("Min Life Time Customer Job Upper Confidence Interval", min([total[inl][inw][inn][ink][inp][inz]["MinLT"]['confUpper'] for inl,inw,inn,ink,inp,inz in iterateOnParams(["lambda","w","N","K","p","z"])]))
 
 if __name__== "__main__":
 	main()
