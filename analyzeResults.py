@@ -1,11 +1,11 @@
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
 import os
 from collections import defaultdict
 from scipy.stats import t
 import sys
 import math
+import plotResults 
 
 stepforqueues = 10
 
@@ -38,28 +38,6 @@ def iterateOnParams(list):
 				yield([e])
 	else:
 		return ([])
-
-def printGraphOnTime(y, title, descrX="x", descrY="y"):
-	plt.plot(y)
-	plt.xlabel(descrX)
-	plt.ylabel(descrY)
-	plt.title(title)
-	plt.savefig(graph + title.replace(" ", "_") + ".png")
-	plt.close()
-
-def printMultiGraph(multi, title, descrX="x", descrY="y"):
-	labels = []
-	ss = []
-	for y,s in multi:
-		tmp, = plt.plot(y, label=s)
-		labels.append(tmp)
-		ss.append(s)
-	plt.xlabel(descrX)
-	plt.ylabel(descrY)
-	plt.title(title)
-	plt.legend(labels, ss)
-	plt.savefig(graph + title.replace(" ", "_") + ".png")
-	plt.close()
 
 def calculateTransient(array):
 	step = math.ceil(np.multiply(np.true_divide(len(array), 100), 2))
@@ -199,7 +177,7 @@ def createPrefixArray(arrayMean):
 	return prefixMean
 
 def calculateConfidenceInterval(meanRows):
-	m = len(meanRows)
+	m = len(meanRows) # numero di run
 	mSquared = np.sqrt(m)
 	meanEstimate = np.mean(meanRows)
 	stdDev = np.std(meanRows)
@@ -217,14 +195,14 @@ def calculateExtimatedValue(configuration, moduleName, attributeName, ontime=Fal
 		configuration[moduleName]["ONTIME"] = createMeanArray(configuration[moduleName][attributeName],step=1)
 	prefixMean = createPrefixArray(configuration[moduleName]["ONTIME"])
 	trans = calculateTransient(prefixMean)
-	print("TRANSIENT =",trans)
+	print("TRANSIENT =", trans)
 	if not trans is None:
-		deleteNvalues(configuration[moduleName]["ONTIME"],trans)
-	configuration[moduleName]["PREFIXMEAN"]=createPrefixArray(configuration[moduleName]["ONTIME"])
+		deleteNvalues(configuration[moduleName]["ONTIME"], trans)
+	configuration[moduleName]["PREFIXMEAN"] = createPrefixArray(configuration[moduleName]["ONTIME"])
 	if ontime:
-		meanRows = [np.mean(createMeanArrayTime([run],start=trans*stepforqueues,step=stepforqueues)) for run in configuration[moduleName][attributeName] ]
+		meanRows = [np.mean(createMeanArrayTime([run],start=trans*stepforqueues,step=stepforqueues)) for run in configuration[moduleName][attributeName]]
 	else:
-		meanRows = [np.mean(createMeanArray([run],start=trans*1,step=1)) for run in configuration[moduleName][attributeName] ]
+		meanRows = [np.mean(createMeanArray([run],start=trans*1,step=1)) for run in configuration[moduleName][attributeName]]
 	print(f'MEAN FOR RUN = {meanRows}')
 	return (meanRows, trans)
 
@@ -272,6 +250,10 @@ def mininrun(run):
 			min = value
 	return min
 
+def safeMkdir(dir):
+    if not os.path.exists(dir):
+        os.makedirs(dir)
+
 def main():
 	checkArgs()
 	total=[]
@@ -292,6 +274,7 @@ def main():
 	deletePrevResults(risultatiSporchi, risultatiPuliti)
 	deletePrevGraph()
 	
+	safeMkdir(graph)
 	assembleDictionary(total)
 
 	print("-----------Done---------------")
@@ -302,14 +285,14 @@ def main():
 		configuration["LT"]["list"], configuration["LT"]["trans"] = calculateExtimatedValue(configuration,"sinkC","lifeTime")
 		analyzeList(configuration["LT"])
 
-		# la media dei massimi (max per ogni run della configurazione e poi la media)
 		configuration["MaxLT"] = defaultdict(list)
+		# la media dei massimi (max per ogni run della configurazione e poi la media)
 		configuration["MaxLT"]["list"] = [maxinrun(arr) for arr in configuration["sinkC"]["lifeTime"]]
 		configuration["MaxLT"]["trans"] = configuration["LT"]["trans"]
 		analyzeList(configuration["MaxLT"])	
 
-		# la media dei minimo (min per ogni run della configurazione e poi la media)
 		configuration["MinLT"] = defaultdict(list)
+		# la media dei minimi (min per ogni run della configurazione e poi la media)
 		configuration["MinLT"]["list"] = [mininrun(arr) for arr in configuration["sinkC"]["lifeTime"]]
 		configuration["MinLT"]["trans"] = configuration["LT"]["trans"]
 		analyzeList(configuration["MinLT"])
@@ -326,15 +309,22 @@ def main():
 
 	for inn, ink in iterateOnParams(["N","K"]): #capacità
 		array = []
+		trans = []
 		for i in range(int(300/stepforqueues)):
 			array.append([])
 		for inp, inl, inw, inz in iterateOnParams(["p","lambda","w", "z"]):
 			for time, value in enumerate(total[inl][inw][inn][ink][inp][inz]["customerQueueQ1"]["PREFIXMEAN"]):
 				array[time].append(value)
+			trans.append(total[inl][inw][inn][ink][inp][inz]["CustomerQL"]["trans"])
+			print(total[inl][inw][inn][ink][inp][inz]["CustomerQL"]["trans"])
 		printarray = []
+		printrans = []
 		for elem in array:
 			printarray.append(np.mean(elem))
-		printGraphOnTime(printarray[2:], f"CQL for N={paramsDict['N'][inn]} and K={paramsDict['K'][ink]} queues capacity", "Time", "Customer QueueLength")
+			printrans.append(np.mean(elem))
+			print('boh', printrans)
+		plotResults.printGraphOnTime(printarray[2:], f"CQL for N={paramsDict['N'][inn]} and K={paramsDict['K'][ink]} queues capacity", "Time", "Customer QueueLength")
+		plotResults.printGraphTransient(printarray[2:], trans, f"CQL for N={paramsDict['N'][inn]} and K={paramsDict['K'][ink]} queues capacity + trans", "Time", "Customer QueueLength")
 
 	for inn, ink in iterateOnParams(["N","K"]): #capacità
 		array = []
@@ -346,7 +336,7 @@ def main():
 		printarray = []
 		for elem in array:
 			printarray.append(np.mean(elem))
-		printGraphOnTime(printarray[2:], f"EQL for N={paramsDict['N'][inn]} and K={paramsDict['K'][ink]} queues capacity","Time", "Energy QueueLength")
+		plotResults.printGraphOnTime(printarray[2:], f"EQL for N={paramsDict['N'][inn]} and K={paramsDict['K'][ink]} queues capacity","Time", "Energy QueueLength")
 
 	multi = []
 	for inl, in1 in enumerate(paramsDict["lambda"]): #interArrivalTime
@@ -360,7 +350,7 @@ def main():
 		for elem in array:
 			printarray.append(np.mean(elem))
 		multi.append([printarray[10:], in1])
-	printMultiGraph(multi, "LifeTime customer job for time compared on lambda", "Time", "Customer LifeTime")
+	plotResults.printMultiGraph(multi, "LifeTime customer job for time compared on lambda", "Time", "Customer LifeTime")
 
 	creaRisultatiPuliti(total)
 
