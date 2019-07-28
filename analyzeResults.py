@@ -50,6 +50,17 @@ def calculateTransient(array):
 			max_index = i
 	return max(max_index, 0)
 
+'''
+def calculateTransient(array):
+	mean = np.mean(array)
+	std = np.std(array)
+	val1 = mean + std
+	val2 = mean - std
+	for i, val in enumerate(array):
+		if val > val2 and val < val1:
+			return i
+'''
+
 def deleteNvalues(array, value):
 	array = array[value:]
 
@@ -316,15 +327,12 @@ def main():
 			for time, value in enumerate(total[inl][inw][inn][ink][inp][inz]["customerQueueQ1"]["PREFIXMEAN"]):
 				array[time].append(value)
 			trans.append(total[inl][inw][inn][ink][inp][inz]["CustomerQL"]["trans"])
-			print(total[inl][inw][inn][ink][inp][inz]["CustomerQL"]["trans"])
 		printarray = []
-		printrans = []
 		for elem in array:
 			printarray.append(np.mean(elem))
-			printrans.append(np.mean(elem))
-			print('boh', printrans)
+		printrans = np.mean(trans)
 		plotResults.printGraphOnTime(printarray[2:], f"CQL for N={paramsDict['N'][inn]} and K={paramsDict['K'][ink]} queues capacity", "Time", "Customer QueueLength")
-		plotResults.printGraphTransient(printarray[2:], trans, f"CQL for N={paramsDict['N'][inn]} and K={paramsDict['K'][ink]} queues capacity + trans", "Time", "Customer QueueLength")
+		plotResults.printGraphTransient(printarray[2:], printrans, f"CQL for N={paramsDict['N'][inn]} and K={paramsDict['K'][ink]} queues capacity + trans", "Time", "Customer QueueLength")
 
 	for inn, ink in iterateOnParams(["N","K"]): #capacità
 		array = []
