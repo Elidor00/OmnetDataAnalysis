@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
+import numpy as np
 
-graph = "../graph/"
+graph = "../graph2/"
 
 def printGraphOnTime(y, title, descrX="x", descrY="y"):
 	plt.plot(y)
@@ -25,10 +26,25 @@ def printMultiGraph(multi, title, descrX="x", descrY="y"):
 	plt.close()
 
 def printGraphTransient(y, trans, title, descrX="x", descrY="y"):
-    plt.plot(y)
-    plt.axvline(trans)
-    plt.xlabel(descrX)
-    plt.ylabel(descrY)
-    plt.title(title)
-    plt.savefig(graph + title.replace(" ", "_") + "trans" + ".png")
-    plt.close()
+	plt.plot(y)
+	plt.axvline(trans, color="red")
+	plt.xlabel(descrX)
+	plt.ylabel(descrY)
+	if len(y) < 100:
+		plt.xticks(np.arange(0, len(y), 5))
+	else:
+		plt.xticks(np.arange(0, len(y), 20)) 
+	plt.title(title)
+	plt.savefig(graph + title.replace(" ", "_") + "_trans" + ".png")
+	plt.close()
+
+def printTMP(y, trans, min, max, title, descrX="x", descrY="y"):
+	plt.plot(y)
+	plt.axvline(trans, color="red")
+	plt.axhline(min, color="black")
+	plt.axhline(max, color="yellow")
+	plt.xlabel(descrX)
+	plt.ylabel(descrY)
+	plt.title(title)
+	plt.savefig(graph + title.replace(" ", "_") + "_trans_min_max" + ".png")
+	plt.close()
