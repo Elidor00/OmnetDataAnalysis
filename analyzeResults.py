@@ -7,7 +7,7 @@ import sys
 import math
 import plotResults 
 
-stepforqueues = 5
+STEPFORQUEUES = 5
 
 count = 0
 countneg = 0
@@ -16,9 +16,9 @@ countuno = 0
 errupper = 0
 errlower = 0
 
-risultatiPuliti = "../risultatiPuliti2.csv"
-risultatiSporchi = "../risultatiSporchi2.csv"
-graph = "../graph2/"
+risultatiPuliti = "../risultatiPuliti.csv"
+risultatiSporchi = "../risultatiSporchi.csv"
+graph = "../graph/"
 tmp = "../tmp.txt"
 
 attrDict = {
@@ -47,9 +47,8 @@ def iterateOnParams(list):
 	else:
 		return ([])
 
-'''
 def calculateTransient(array):
-	step = math.ceil(np.multiply(np.true_divide(len(array), 100), 2))
+	step = math.ceil(np.multiply(np.true_divide(len(array), 100), 5)) #2%
 	max_diff = 0
 	max_index = -1
 	for i in range(step * 2, len(array), step):
@@ -69,7 +68,7 @@ def calculateTransient(array):
 		if val > val2 and val < val1:
 				return i
 	return 1 
-
+'''
 
 def deleteNvalues(array, trans):
 	array = array[trans:]
@@ -212,7 +211,7 @@ def calculateExtimatedValue(configuration, moduleName, attributeName, ontime=Fal
 	global count, countneg, countuno
 	prefixMean = []
 	if ontime:
-		configuration[moduleName]["ONTIME"] = createMeanArrayTime(configuration[moduleName][attributeName],step=stepforqueues)
+		configuration[moduleName]["ONTIME"] = createMeanArrayTime(configuration[moduleName][attributeName],step=STEPFORQUEUES)
 	else:
 		configuration[moduleName]["ONTIME"] = createMeanArray(configuration[moduleName][attributeName],step=1)
 	prefixMean = createPrefixArray(configuration[moduleName]["ONTIME"])
@@ -228,7 +227,7 @@ def calculateExtimatedValue(configuration, moduleName, attributeName, ontime=Fal
 		deleteNvalues(configuration[moduleName]["ONTIME"], trans)
 	configuration[moduleName]["PREFIXMEAN"] = createPrefixArray(configuration[moduleName]["ONTIME"])
 	if ontime:
-		meanRows = [np.mean(createMeanArrayTime([run],start=trans*stepforqueues,step=stepforqueues)) for run in configuration[moduleName][attributeName]]
+		meanRows = [np.mean(createMeanArrayTime([run],start=trans*STEPFORQUEUES,step=STEPFORQUEUES)) for run in configuration[moduleName][attributeName]]
 	else:
 		meanRows = [np.mean(createMeanArray([run],start=trans*1,step=1)) for run in configuration[moduleName][attributeName]]
 	print(f'MEAN FOR RUN = {meanRows}')
@@ -336,13 +335,15 @@ def main():
 
 	print("----------- Graph --------------------")
 
+######################## CUSTOMER QUEUE LENGHT ########################
+
 	for inn, ink in iterateOnParams(["N","K"]): #capacità
 		array = []
 		trans = []
 		mean = []
 		confL = []
 		confU = []
-		for i in range(int(300/stepforqueues)):
+		for i in range(int(300/STEPFORQUEUES)):
 			array.append([])
 		for inp, inl, inw, inz in iterateOnParams(["p","lambda","w", "z"]):
 			for time, value in enumerate(total[inl][inw][inn][ink][inp][inz]["customerQueueQ1"]["ONTIME"]):
@@ -363,12 +364,13 @@ def main():
 		if printconfU < printmean:
 			errupper = errupper + 1
 		with open(tmp,"a") as f:
+			f.write("CQL" + "\n")
 			f.write("trans = " + str(printrans) + " mean = " + str(printmean) + " confL = " + str(printconfL) + " confU = " + str(printconfU) + "\n")
-		plotResults.printGraphTransient(printarray, printrans, f"CQL for N={paramsDict['N'][inn]} and K={paramsDict['K'][ink]} queues capacity", "Time", "Customer QueueLength")
+		plotResults.printGraphTransient(printarray[2:], printrans, f"CQL for N={paramsDict['N'][inn]} and K={paramsDict['K'][ink]} queues capacity", "Time", "Customer QueueLength")
 
 	for inn, ink in iterateOnParams(["N","K"]): #capacità
 		array = []
-		for i in range(int(300/stepforqueues)):
+		for i in range(int(300/STEPFORQUEUES)):
 			array.append([])
 		for inp, inl, inw, inz in iterateOnParams(["p","lambda","w", "z"]):
 			for time, value in enumerate(total[inl][inw][inn][ink][inp][inz]["customerQueueQ1"]["PREFIXMEAN"]):
@@ -378,21 +380,24 @@ def main():
 			printarray.append(np.mean(elem))
 		plotResults.printGraphOnTime(printarray[2:], f"CQL for N={paramsDict['N'][inn]} and K={paramsDict['K'][ink]} queues capacity - prefixmean", "Time", "Customer QueueLength")
 
+
+######################## ENERGY QUEUE LENGHT ########################
+
 	for inn, ink in iterateOnParams(["N","K"]): #capacità
 		array = []
 		trans = []
 		mean = []
 		confL = []
 		confU = []
-		for i in range(int(300/stepforqueues)):
+		for i in range(int(300/STEPFORQUEUES)):
 			array.append([])
 		for inp, inl, inw, inz in iterateOnParams(["p","lambda","w", "z"]):
 			for time, value in enumerate(total[inl][inw][inn][ink][inp][inz]["energyQueueQ2"]["ONTIME"]):
 				array[time].append(value)
 			trans.append(total[inl][inw][inn][ink][inp][inz]["EnergyQL"]["trans"])
-			mean.append(total[inl][inw][inn][ink][inp][inz]["CustomerQL"]["MEAN"])
-			confL.append(total[inl][inw][inn][ink][inp][inz]["CustomerQL"]["confLower"])
-			confU.append(total[inl][inw][inn][ink][inp][inz]["CustomerQL"]["confUpper"])
+			mean.append(total[inl][inw][inn][ink][inp][inz]["EnergyQL"]["MEAN"])
+			confL.append(total[inl][inw][inn][ink][inp][inz]["EnergyQL"]["confLower"])
+			confU.append(total[inl][inw][inn][ink][inp][inz]["EnergyQL"]["confUpper"])
 		printarray = []
 		for elem in array:
 			printarray.append(np.mean(elem))
@@ -405,12 +410,13 @@ def main():
 		if printconfU < printmean:
 			errupper = errupper + 1
 		with open(tmp,"a") as f:
+			f.write("EQL" + "\n")
 			f.write("trans = " + str(printrans) + " mean = " + str(printmean) + " confL = " + str(printconfL) + " confU = " + str(printconfU) + "\n")
-		plotResults.printGraphTransient(printarray, printrans, f"EQL for N={paramsDict['N'][inn]} and K={paramsDict['K'][ink]} queues capacity", "Time", "Energy QueueLength")
+		plotResults.printGraphTransient(printarray[:len(printarray)-3], printrans, f"EQL for N={paramsDict['N'][inn]} and K={paramsDict['K'][ink]} queues capacity", "Time", "Energy QueueLength")
 
 	for inn, ink in iterateOnParams(["N","K"]): #capacità
 		array = []
-		for i in range(int(300/stepforqueues)):
+		for i in range(int(300/STEPFORQUEUES)):
 			array.append([])
 		for inp, inl, inw, inz in iterateOnParams(["p","lambda","w", "z"]):
 			for time, value in enumerate(total[inl][inw][inn][ink][inp][inz]["energyQueueQ2"]["PREFIXMEAN"]):
@@ -420,9 +426,14 @@ def main():
 			printarray.append(np.mean(elem))
 		plotResults.printGraphOnTime(printarray[2:], f"EQL for N={paramsDict['N'][inn]} and K={paramsDict['K'][ink]} queues capacity - prefixmean","Time", "Energy QueueLength")
 
+######################## CUSTOMER LIFE TIME ########################
+
 	for inl, in1 in enumerate(paramsDict["lambda"]): #interArrivalTime
 		array = []
 		trans = []
+		mean = []
+		confL = []
+		confU = []
 		maxmean = []
 		minmean = []
 		for i in range(int(300/1)):
@@ -431,16 +442,28 @@ def main():
 			for time, value in enumerate(total[inl][inw][inn][ink][inp][inz]["sinkC"]["ONTIME"]):
 				array[time].append(value)
 			trans.append(total[inl][inw][inn][ink][inp][inz]["LT"]["trans"])
+			mean.append(total[inl][inw][inn][ink][inp][inz]["LT"]["MEAN"])
+			confL.append(total[inl][inw][inn][ink][inp][inz]["LT"]["confLower"])
+			confU.append(total[inl][inw][inn][ink][inp][inz]["LT"]["confUpper"])
 			maxmean.append(total[inl][inw][inn][ink][inp][inz]["MaxLT"]["MEAN"])
 			minmean.append(total[inl][inw][inn][ink][inp][inz]["MinLT"]["MEAN"])
 		printarray = []
 		for elem in array:
 			printarray.append(np.mean(elem))
 		printrans = np.mean(trans)
+		printmean = np.mean(mean)
+		printconfL = np.mean(confL)
+		printconfU = np.mean(confU)
 		printmax = np.mean(maxmean)
 		printmin = np.mean(minmean)
-		plotResults.printGraphTransient(printarray, printrans*stepforqueues, f"LifeTime customer job for lambda={paramsDict['lambda'][inl]} + trans", "Time", "Customer LifeTime")
-		#plotResults.printTMP(printarray, printrans, printmin, printmax, f"LifeTime customer job for lambda={paramsDict['lambda'][inl]} + trans", "Time", "Customer LifeTime")
+		if printconfL > printmean:
+			errlower = errlower + 1
+		if printconfU < printmean:
+			errupper = errupper + 1
+		with open(tmp,"a") as f:
+			f.write("LifeTime" + "\n")
+			f.write("trans = " + str(printrans) + " mean = " + str(printmean) + " confL = " + str(printconfL) + " confU = " + str(printconfU) + " maxLT = " + str(printmax) + " minLT = " + str(printmin) + "\n")
+		plotResults.printGraphTransient(printarray, printrans*STEPFORQUEUES, f"LifeTime customer job for lambda={paramsDict['lambda'][inl]} + trans", "Time", "Customer LifeTime")
 
 	multi = []
 	for inl, in1 in enumerate(paramsDict["lambda"]): #interArrivalTime

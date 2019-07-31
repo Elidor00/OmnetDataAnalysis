@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-graph = "../graph2/"
+graph = "../graph/"
 
 def printGraphOnTime(y, title, descrX="x", descrY="y"):
 	plt.plot(y)
@@ -36,15 +36,4 @@ def printGraphTransient(y, trans, title, descrX="x", descrY="y"):
 		plt.xticks(np.arange(0, len(y), 20)) 
 	plt.title(title)
 	plt.savefig(graph + title.replace(" ", "_") + "_trans" + ".png")
-	plt.close()
-
-def printTMP(y, trans, min, max, title, descrX="x", descrY="y"):
-	plt.plot(y)
-	plt.axvline(trans, color="red")
-	plt.axhline(min, color="black")
-	plt.axhline(max, color="yellow")
-	plt.xlabel(descrX)
-	plt.ylabel(descrY)
-	plt.title(title)
-	plt.savefig(graph + title.replace(" ", "_") + "_trans_min_max" + ".png")
 	plt.close()
