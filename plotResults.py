@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 
-graph = "../graphMAX/"
+graph = "../graph/"
 
 def printGraphOnTime(y, title, descrX="x", descrY="y"):
 	plt.plot(y)
